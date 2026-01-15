@@ -5,338 +5,322 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistem Pengiriman Surat - KPKNL Serang</title>
   
-  <!-- Pastikan koneksi CDN menggunakan HTTPS -->
+  <!-- Tailwind CSS & Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Pustaka untuk PDF -->
+  <!-- Pustaka PDF & Canvas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <style>
-    /* Menggunakan font sistem sebagai cadangan jika Google Fonts gagal dimuat di GitHub */
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-    
     :root {
-      --primary: #0f172a;
-      --accent: #4f46e5;
-      --bg-soft: #fcfcfd;
+      --primary: #4f46e5;
+      --secondary: #0f172a;
+      --bg-app: #f8fafc;
     }
 
     * { 
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      font-family: 'Plus Jakarta Sans', sans-serif; 
       box-sizing: border-box; 
     }
     
     body {
-      background-color: var(--bg-soft);
+      background-color: var(--bg-app);
       background-image: 
-        radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.05) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
-      color: #1e293b;
-      margin: 0;
+        radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.03) 0, transparent 50%),
+        radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.03) 0, transparent 50%);
+      color: #334155;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Modern Card Style */
     .modern-card {
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px); /* Dukungan Safari */
-      border: 1px solid rgba(226, 232, 240, 0.6);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(0, 0, 0, 0.03);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 4px 15px -1px rgba(0, 0, 0, 0.01), 0 10px 30px -3px rgba(0, 0, 0, 0.02);
+      border-radius: 24px;
     }
 
-    .modern-card:hover {
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    .tab-btn {
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      color: #64748b;
+      font-weight: 600;
+    }
+    .tab-btn.active { color: var(--primary); }
+    .tab-btn.active::after {
+      content: '';
+      position: absolute; bottom: -18px; left: 0; right: 0;
+      height: 3px; background: var(--primary);
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
     }
 
     .toast {
-      position: fixed; bottom: 32px; right: 32px;
-      padding: 1.25rem 2rem; border-radius: 20px;
-      color: white; z-index: 1000; 
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-      animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      position: fixed; bottom: 2rem; right: 2rem;
+      padding: 1rem 1.5rem; border-radius: 16px;
+      background: #0f172a; color: white; z-index: 1000;
       display: flex; align-items: center; gap: 12px;
-      font-weight: 600; font-size: 0.875rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      animation: popUp 0.4s ease-out;
     }
+    @keyframes popUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-    @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    
-    .tab-btn {
-      position: relative;
-      padding: 1rem 0.5rem;
-      font-weight: 600;
-      color: #94a3b8;
-      transition: all 0.2s;
-    }
-    .tab-btn:hover { color: #475569; }
-    .tab-btn.active { color: var(--accent); }
-    .tab-btn.active::after {
-      content: '';
-      position: absolute; bottom: 0; left: 0; right: 0;
-      height: 3px; background: var(--accent);
-      border-radius: 10px;
-    }
-
-    .loader-ring {
-      display: inline-block; width: 1.5rem; height: 1.5rem;
-      border: 3px solid rgba(79, 70, 229, 0.1); border-radius: 50%;
-      border-top-color: var(--accent); animation: spin 0.8s ease-in-out infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Laporan / Paper Preview */
+    /* Ukuran Kertas A4 Precission */
     .paper-preview {
       background: white;
       width: 210mm;
-      margin: 0 auto;
       min-height: 297mm;
-      padding: 2.5cm;
-      box-shadow: 0 0 40px rgba(0,0,0,0.05);
+      padding: 2.5cm 2cm;
+      margin: 2rem auto;
+      box-shadow: 0 0 50px rgba(0,0,0,0.06);
       color: #000;
-      font-family: "Times New Roman", Times, serif;
+      font-family: 'Times New Roman', Times, serif;
+      position: relative;
+      overflow: hidden;
     }
     
-    .table-laporan { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
-    .table-laporan th, .table-laporan td { border: 1px solid #000; padding: 10px; font-size: 13px; }
-    .table-laporan th { background-color: #f1f5f9; text-transform: uppercase; }
+    .table-laporan { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+    .table-laporan th, .table-laporan td { 
+      border: 0.5pt solid #000; 
+      padding: 8px 10px; 
+      font-size: 11pt; 
+      line-height: 1.4;
+    }
+    .table-laporan th { background-color: #f8fafc; font-weight: bold; }
 
-    input:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: var(--accent);
-      ring: 2px; ring-color: rgba(79, 70, 229, 0.2);
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 20px -5px rgba(79, 70, 229, 0.4);
     }
 
-    /* Print logic */
     @media print {
-      body * { visibility: hidden; }
-      #printableArea, #printableArea * { visibility: visible; }
-      #printableArea {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0 !important;
+      body { background: white !important; }
+      .no-print { display: none !important; }
+      .paper-preview { 
+        margin: 0 !important; 
+        box-shadow: none !important; 
+        width: 100% !important;
         padding: 0 !important;
-        box-shadow: none !important;
       }
-      @page { margin: 1.5cm; }
     }
+
+    /* Scrollbar Style */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
   </style>
 </head>
 <body class="h-full">
+
   <div id="app" class="min-h-screen flex flex-col">
-    
-    <!-- Header / Navbar -->
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 no-print border-b border-slate-200/60">
-      <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <!-- Navbar -->
+    <header class="bg-white/70 backdrop-blur-xl sticky top-0 z-50 border-b border-slate-200/50 no-print">
+      <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+          <div class="w-11 h-11 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
           </div>
           <div>
-            <h1 class="text-xl font-extrabold text-slate-900 tracking-tight leading-none uppercase">Sistem Pengiriman Surat</h1>
-            <div class="flex items-center gap-2 mt-1">
-              <span id="syncDot" class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              <span id="statusText" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sistem Aktif</span>
-            </div>
+            <h1 class="text-lg font-extrabold text-slate-900 tracking-tight leading-none">KPKNL SERANG</h1>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">E-Ekspedisi Surat</p>
           </div>
         </div>
         
-        <nav class="hidden md:flex items-center gap-8">
-            <button id="tabInput" class="tab-btn active text-sm uppercase tracking-wider">Input Baru</button>
-            <button id="tabRekap" class="tab-btn text-sm uppercase tracking-wider">Arsip Data</button>
-            <button id="tabLaporan" class="tab-btn text-sm uppercase tracking-wider">Laporan</button>
+        <nav class="hidden md:flex items-center gap-10">
+          <button id="tabInput" class="tab-btn active text-sm">Input Data</button>
+          <button id="tabRekap" class="tab-btn text-sm">Arsip Surat</button>
+          <button id="tabLaporan" class="tab-btn text-sm">Cetak Laporan</button>
         </nav>
 
-        <div class="flex items-center gap-3">
-            <button onclick="fetchAllData()" class="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all" title="Refresh">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            </button>
+        <div class="flex items-center gap-2">
+            <div id="statusDot" class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-1"></div>
+            <!-- Status Text Removed as per request -->
+            <span id="statusText" class="hidden">Online</span>
         </div>
       </div>
     </header>
 
-    <main class="flex-grow max-w-7xl mx-auto w-full px-6 py-12">
+    <main class="flex-grow w-full max-w-7xl mx-auto px-6 py-10">
       
-      <!-- PAGE 1: INPUT -->
-      <section id="contentInput" class="tab-content transition-all">
-        <div class="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-10">
-          <div class="lg:col-span-3 space-y-6">
-            <div class="modern-card p-10 rounded-[32px]">
-                <div class="mb-10">
-                    <h2 class="text-2xl font-extrabold text-slate-900">Registrasi Surat</h2>
-                    <p class="text-slate-500 text-sm mt-1">Input data pengiriman surat hari ini secara detail.</p>
+      <!-- PAGE: INPUT -->
+      <section id="contentInput" class="tab-content transition-all duration-500">
+        <div class="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div class="lg:col-span-2">
+            <div class="modern-card p-8 md:p-10">
+              <div class="mb-8">
+                <h2 class="text-2xl font-black text-slate-900">Registrasi Pengiriman</h2>
+                <p class="text-slate-500 text-sm mt-1">Lengkapi detail pengiriman surat untuk arsip cloud.</p>
+              </div>
+              
+              <form id="formPengiriman" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div class="space-y-2">
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nomor Surat</label>
+                    <input type="text" id="nomorSurat" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all" placeholder="S-000/KNL.0601/2026">
+                  </div>
+                  <div class="space-y-2">
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Tanggal</label>
+                    <input type="date" id="tanggalKirim" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all">
+                  </div>
                 </div>
                 
-                <form id="formPengiriman" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nomor Surat</label>
-                            <input type="text" id="nomorSurat" required class="w-full px-6 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white" placeholder="S-000/KNL.0601/2026">
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Tanggal</label>
-                            <input type="date" id="tanggalKirim" required class="w-full px-6 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white">
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Alamat Tujuan</label>
-                        <textarea id="alamatTujuan" required rows="3" class="w-full px-6 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white" placeholder="Nama Instansi & Alamat lengkap..."></textarea>
-                    </div>
+                <div class="space-y-2">
+                  <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Instansi / Alamat Tujuan</label>
+                  <textarea id="alamatTujuan" required rows="3" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all" placeholder="Contoh: Kanwil DJKN Banten, Jl. Raya Serang..."></textarea>
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Jumlah (Berkas)</label>
-                            <input type="number" id="jumlahSurat" required value="1" min="1" class="w-full px-6 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white">
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Petugas Pengirim</label>
-                            <input type="text" id="namaPengirim" required class="w-full px-6 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white" placeholder="Nama Anda">
-                        </div>
-                    </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div class="space-y-2">
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Jumlah Berkas</label>
+                    <input type="number" id="jumlahSurat" required value="1" min="1" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all">
+                  </div>
+                  <div class="space-y-2">
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Petugas</label>
+                    <input type="text" id="namaPengirim" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all" placeholder="Nama penginput">
+                  </div>
+                </div>
 
-                    <button type="submit" id="submitBtn" class="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3">
-                        <span class="text-sm uppercase tracking-widest">Simpan Data</span>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
-                    </button>
-                </form>
+                <button type="submit" id="submitBtn" class="btn-primary w-full py-4 text-white font-bold rounded-xl flex items-center justify-center gap-3 mt-4">
+                  <span>SIMPAN DATA</span>
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+              </form>
             </div>
           </div>
           
-          <div class="lg:col-span-2 space-y-6">
-            <div class="modern-card p-8 rounded-[32px] bg-gradient-to-br from-indigo-600 to-blue-700 text-white border-none">
-                <p class="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-2">Statistik Hari Ini</p>
-                <h3 id="todayCount" class="text-5xl font-black mb-6">0</h3>
-                <p class="text-sm text-indigo-100/80 leading-relaxed">Surat telah tercatat di sistem pada hari ini.</p>
-                <div class="mt-8 pt-8 border-t border-white/10 flex items-center justify-between">
-                    <span class="text-xs font-semibold opacity-60">Status: Terkoneksi</span>
-                    <div class="w-2 h-2 bg-emerald-400 rounded-full"></div>
+          <div class="space-y-6">
+            <div class="modern-card p-8 bg-indigo-600 text-white border-none overflow-hidden relative">
+              <div class="relative z-10">
+                <p class="text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-1">Total Hari Ini</p>
+                <div class="flex items-baseline gap-2">
+                  <h3 id="todayCount" class="text-6xl font-black">0</h3>
+                  <span class="text-indigo-200 font-bold text-sm">Surat</span>
                 </div>
+              </div>
+              <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
             </div>
-            <div class="modern-card p-8 rounded-[32px] overflow-hidden">
-                <h4 class="font-bold text-slate-800 mb-4 text-sm">Update Terakhir</h4>
-                <div id="recentLog" class="space-y-4">
-                    <p class="text-xs text-slate-400 italic">Menunggu data baru...</p>
-                </div>
+            
+            <div class="modern-card p-6">
+              <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Aktivitas Terbaru</h4>
+              <div id="recentLog" class="space-y-4">
+                <p class="text-xs text-slate-400 italic">Belum ada aktivitas.</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- PAGE 2: REKAP -->
-      <section id="contentRekap" class="tab-content hidden animate-in fade-in duration-300">
-        <div class="modern-card rounded-[32px] overflow-hidden">
-          <div class="p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+      <!-- PAGE: REKAP -->
+      <section id="contentRekap" class="tab-content hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div class="modern-card overflow-hidden">
+          <div class="p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <h2 class="text-xl font-extrabold text-slate-900">Arsip Pengiriman</h2>
-                <p class="text-xs text-slate-500 mt-1">Daftar lengkap surat yang tersimpan di cloud.</p>
+              <h2 class="text-xl font-black text-slate-900">Arsip Pengiriman</h2>
+              <p class="text-xs text-slate-500 mt-1">Data historis pengiriman surat yang tersimpan di cloud.</p>
             </div>
             <div class="relative w-full md:w-80">
-                <input type="text" id="searchBox" onkeyup="handleSearch(this.value)" class="w-full pl-12 pr-6 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:bg-white" placeholder="Cari instansi atau nomor...">
-                <svg class="w-4 h-4 absolute left-4 top-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <input type="text" id="searchBox" onkeyup="handleSearch(this.value)" class="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all" placeholder="Cari nomor surat atau tujuan...">
+              <svg class="w-5 h-5 absolute left-4 top-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </div>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-left">
+            <table class="w-full">
               <thead>
-                <tr class="text-[10px] font-black uppercase text-slate-400 bg-slate-50/50 border-b tracking-widest">
-                  <th class="px-10 py-5">Identitas Resi</th>
-                  <th class="px-10 py-5">Nomor Surat</th>
-                  <th class="px-10 py-5">Instansi Tujuan</th>
-                  <th class="px-10 py-5">Pengirim</th>
-                  <th class="px-10 py-5 text-center">Jml</th>
+                <tr class="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                  <th class="px-8 py-5 text-left">Resi / Tanggal</th>
+                  <th class="px-8 py-5 text-left">Nomor Surat</th>
+                  <th class="px-8 py-5 text-left">Tujuan</th>
+                  <th class="px-8 py-5 text-left">Petugas</th>
+                  <th class="px-8 py-5 text-center">Berkas</th>
                 </tr>
               </thead>
               <tbody id="rekapTableBody" class="divide-y divide-slate-100">
-                <tr><td colspan="5" class="p-32 text-center"><div class="loader-ring"></div></td></tr>
+                <tr><td colspan="5" class="py-20 text-center text-slate-400">Memuat data...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
       </section>
 
-      <!-- PAGE 3: LAPORAN -->
-      <section id="contentLaporan" class="tab-content hidden animate-in fade-in duration-300">
-        <div class="max-w-5xl mx-auto space-y-12">
-          
-          <div class="modern-card p-10 rounded-[32px] no-print">
-            <div class="flex items-center gap-3 mb-8">
-                <div class="w-1.5 h-8 bg-indigo-600 rounded-full"></div>
-                <h3 class="font-bold text-slate-900 uppercase tracking-widest text-sm">Generator Laporan Resmi</h3>
+      <!-- PAGE: LAPORAN -->
+      <section id="contentLaporan" class="tab-content hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div class="max-w-5xl mx-auto space-y-8">
+          <div class="modern-card p-8 md:p-10 no-print">
+            <h3 class="text-lg font-black text-slate-900 mb-6">Generator Laporan Ekspedisi</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+              <div class="space-y-2">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Periode Awal</label>
+                <input type="date" id="reportStartDate" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white transition-all">
+              </div>
+              <div class="space-y-2">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Periode Akhir</label>
+                <input type="date" id="reportEndDate" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white transition-all">
+              </div>
+              <button onclick="generatePreview()" class="py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition-all text-xs tracking-widest">PRATINJAU LAPORAN</button>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
-              <div class="space-y-3">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Dari Tanggal</label>
-                <input type="date" id="reportStartDate" class="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white font-medium">
-              </div>
-              <div class="space-y-3">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Sampai Tanggal</label>
-                <input type="date" id="reportEndDate" class="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white font-medium">
-              </div>
-              <button onclick="previewReportAsLetter()" class="w-full py-4.5 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl transition-all shadow-xl shadow-slate-200 uppercase text-xs tracking-widest">
-                Tampilkan Preview
+            <div id="reportActions" class="hidden mt-8 pt-8 border-t border-slate-100 flex flex-wrap gap-4">
+              <button onclick="window.print()" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl flex items-center gap-2 text-xs tracking-widest hover:bg-indigo-700 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                CETAK / PRINT
               </button>
-            </div>
-            
-            <div class="mt-10 pt-10 border-t border-slate-100 flex flex-wrap gap-4">
-                <button onclick="window.print()" class="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all flex items-center gap-3 text-xs uppercase tracking-widest shadow-lg shadow-indigo-100">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                    Cetak Laporan
-                </button>
-                <button onclick="downloadPDF()" class="px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold rounded-2xl transition-all flex items-center gap-3 text-xs uppercase tracking-widest">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Download PDF
-                </button>
+              <button onclick="exportToPDF()" class="px-6 py-3 bg-white text-slate-700 border border-slate-200 font-bold rounded-xl flex items-center gap-2 text-xs tracking-widest hover:bg-slate-50 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                DOWNLOAD PDF
+              </button>
             </div>
           </div>
 
-          <!-- Preview Area -->
-          <div id="previewSuratWrapper" class="hidden pb-20">
-            <div class="flex justify-center mb-6 no-print">
-                <span class="px-4 py-1.5 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-full">Pratinjau Kertas A4</span>
-            </div>
-            
+          <!-- Kertas A4 -->
+          <div id="reportPreviewArea" class="hidden animate-in zoom-in-95 duration-500">
             <div id="printableArea" class="paper-preview">
-              <div class="text-center border-b-[3px] border-double border-black pb-4 mb-10">
-                  <p class="text-[14px] font-bold leading-tight">KEMENTERIAN KEUANGAN REPUBLIK INDONESIA</p>
-                  <p class="text-[12px] font-bold leading-tight">DIREKTORAT JENDERAL KEKAYAAN NEGARA</p>
-                  <p class="text-[10px] font-bold leading-tight">KANTOR WILAYAH DJKN BANTEN</p>
-                  <p class="text-[11px] font-bold leading-tight">KANTOR PELAYANAN KEKAYAAN NEGARA DAN LELANG SERANG</p>
-                  <p class="text-[9px] mt-1 normal-case font-normal italic">Jalan Raya Serang-Cilegon Km. 3, Serang 42162 Telepon (0254) 216361</p>
+              <!-- Kop Surat -->
+              <div class="text-center border-b-[2.5pt] border-double border-black pb-4 mb-8">
+                <p class="text-[12pt] font-bold m-0 leading-tight">KEMENTERIAN KEUANGAN REPUBLIK INDONESIA</p>
+                <p class="text-[11pt] font-bold m-0 leading-tight">DIREKTORAT JENDERAL KEKAYAAN NEGARA</p>
+                <p class="text-[9pt] font-bold m-0 leading-tight">KANTOR WILAYAH DJKN BANTEN</p>
+                <p class="text-[10pt] font-bold m-0 leading-tight">KANTOR PELAYANAN KEKAYAAN NEGARA DAN LELANG SERANG</p>
+                <p class="text-[8pt] m-0 mt-1 italic font-normal">Jalan Raya Serang-Cilegon Km. 3, Serang 42162 Telepon (0254) 216361</p>
               </div>
 
-              <div class="space-y-8">
+              <!-- Judul Laporan -->
+              <div class="text-center mb-10">
+                <p class="text-[14pt] font-bold underline m-0 tracking-wider">DAFTAR EKSPEDISI SURAT DINAS</p>
+                <p class="text-[10pt] font-bold mt-1 uppercase">PERIODE: <span id="reportPeriodText">-</span></p>
+              </div>
+
+              <!-- Isi Tabel -->
+              <table class="table-laporan">
+                <thead>
+                  <tr>
+                    <th style="width: 30pt">No</th>
+                    <th style="width: 80pt">Tanggal</th>
+                    <th>Nomor Surat</th>
+                    <th>Instansi Tujuan</th>
+                    <th style="width: 35pt">Jml</th>
+                  </tr>
+                </thead>
+                <tbody id="reportTableContent"></tbody>
+              </table>
+
+              <!-- Tanda Tangan -->
+              <div class="mt-16 grid grid-cols-2 text-[11pt]">
                 <div class="text-center">
-                    <p class="font-bold underline uppercase text-[15px] tracking-[0.2em]">LAPORAN REKAPITULASI EKSPEDISI SURAT</p>
-                    <p class="text-[10px] font-bold mt-2 uppercase">Periode: <span id="letterPeriodRange" class="underline">-</span></p>
+                  <p class="font-bold mb-24">PENGIRIM / PETUGAS</p>
+                  <p class="font-bold">( ..................................... )</p>
                 </div>
-
-                <table class="table-laporan">
-                  <thead>
-                    <tr>
-                      <th class="w-8">No</th>
-                      <th class="w-32">Tanggal</th>
-                      <th>Nomor Surat</th>
-                      <th>Instansi Tujuan</th>
-                      <th class="w-12">Jml</th>
-                    </tr>
-                  </thead>
-                  <tbody id="letterTableContent"></tbody>
-                </table>
-
-                <div class="mt-20 grid grid-cols-2 gap-12 text-[12px]">
-                  <div class="text-center">
-                    <p class="font-bold mb-24">PETUGAS PENGIRIM</p>
-                    <p class="font-bold underline">( ..................................... )</p>
-                  </div>
-                  <div class="text-center">
-                    <p class="mb-4">Serang, <span id="letterPrintDate"></span></p>
-                    <p class="font-bold mb-20 uppercase">PENERIMA / EKSPEDISI</p>
-                    <p class="font-bold underline">( ..................................... )</p>
-                  </div>
+                <div class="text-center">
+                  <p class="mb-1">Serang, <span id="reportTodayDate"></span></p>
+                  <p class="font-bold mb-20 uppercase">PENERIMA / EKSPEDISI</p>
+                  <p class="font-bold">( ..................................... )</p>
                 </div>
               </div>
             </div>
@@ -345,186 +329,209 @@
       </section>
     </main>
 
-    <footer class="no-print bg-white/50 border-t border-slate-100 py-10">
-        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">© 2026 KPKNL Serang</p>
+    <footer class="no-print py-8 border-t border-slate-200/50 bg-white/50 backdrop-blur-sm">
+      <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+        <p>© 2026 KPKNL Serang</p>
+        <div class="flex gap-4">
+          <!-- Versions and Cloud Status Removed as per request -->
         </div>
+      </div>
     </footer>
   </div>
 
   <script>
     const SPREADSHEET_URL = "https://script.google.com/macros/s/AKfycbzh25RHh6tcCjRrixucsEVx6ugi4IwkxmJsM8-yyFCnByIzaTS3ohooIMgx7Yv7_ckP/exec";
-    let db = [];
+    let database = [];
 
-    function toast(msg, type='success') {
+    // UI Helper: Toast
+    function notify(message, type = 'success') {
       const t = document.createElement('div');
       t.className = `toast ${type === 'success' ? 'bg-slate-900' : 'bg-red-600'}`;
-      t.innerHTML = `<div class="w-2 h-2 rounded-full ${type === 'success' ? 'bg-indigo-400 animate-pulse' : 'bg-white'}"></div>${msg}`;
+      t.innerHTML = `<svg class="w-4 h-4 text-indigo-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path></svg>${message}`;
       document.body.appendChild(t);
       setTimeout(() => {
         t.style.opacity = '0';
-        t.style.transform = 'translateY(20px)';
         setTimeout(() => t.remove(), 500);
-      }, 3500);
+      }, 3000);
     }
 
-    function switchTab(tabId) {
-      const tabs = ['Input', 'Rekap', 'Laporan'];
-      tabs.forEach(x => {
-        document.getElementById(`tab${x}`).classList.remove('active');
-        document.getElementById(`content${x}`).classList.add('hidden');
-      });
-      document.getElementById(`tab${tabId}`).classList.add('active');
-      document.getElementById(`content${tabId}`).classList.remove('hidden');
-      if(tabId === 'Rekap') fetchAllData();
+    // Navigation Logic
+    function setActiveTab(id) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+      
+      document.getElementById(`tab${id}`).classList.add('active');
+      document.getElementById(`content${id}`).classList.remove('hidden');
+      
+      if (id === 'Rekap') refreshData();
     }
 
-    async function fetchAllData() {
-      const dot = document.getElementById('syncDot');
+    // Data Fetching
+    async function refreshData() {
+      const dot = document.getElementById('statusDot');
       const text = document.getElementById('statusText');
       text.innerText = "SINKRONISASI...";
       dot.className = "w-2 h-2 bg-indigo-500 rounded-full animate-ping";
       
       try {
-        const response = await fetch(`${SPREADSHEET_URL}?action=read&_t=${Date.now()}`);
-        const result = await response.json();
+        const resp = await fetch(`${SPREADSHEET_URL}?action=read&_t=${Date.now()}`);
+        const result = await resp.json();
         if (result.status === "success") {
-          db = result.data || [];
-          renderRekap(db);
-          updateSummary();
-          text.innerText = "SISTEM AKTIF";
+          database = result.data || [];
+          renderTable(database);
+          updateDash();
+          text.innerText = "ONLINE";
           dot.className = "w-2 h-2 bg-emerald-500 rounded-full";
         }
       } catch (err) {
-        text.innerText = "SISTEM AKTIF";
-        dot.className = "w-2 h-2 bg-slate-400 rounded-full";
+        text.innerText = "OFFLINE";
+        dot.className = "w-2 h-2 bg-red-500 rounded-full";
       }
     }
 
-    function updateSummary() {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const todayData = db.filter(i => i.tanggal === todayStr);
-        document.getElementById('todayCount').innerText = todayData.length;
-        const log = document.getElementById('recentLog');
-        if(todayData.length > 0) {
-            log.innerHTML = todayData.slice(0, 3).map(i => `
-                <div class="flex items-start gap-3">
-                    <div class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5"></div>
-                    <div>
-                        <p class="text-[11px] font-bold text-slate-700 leading-tight truncate w-32">${i.no_surat}</p>
-                        <p class="text-[10px] text-slate-400 uppercase font-medium mt-0.5">Tujuan: ${i.tujuan.substring(0,15)}...</p>
-                    </div>
-                </div>
-            `).join('');
-        }
+    function updateDash() {
+      const today = new Date().toISOString().split('T')[0];
+      const items = database.filter(i => i.tanggal === today);
+      document.getElementById('todayCount').innerText = items.length;
+      
+      const log = document.getElementById('recentLog');
+      if (items.length > 0) {
+        log.innerHTML = items.slice(0, 3).map(i => `
+          <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+            <div class="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-1.5"></div>
+            <div>
+              <p class="text-[11px] font-bold text-slate-800 truncate w-32">${i.no_surat}</p>
+              <p class="text-[9px] text-slate-400 uppercase font-medium mt-0.5">${i.tujuan.substring(0, 20)}...</p>
+            </div>
+          </div>
+        `).join('');
+      }
     }
 
-    function renderRekap(data = db) {
+    function renderTable(data) {
       const body = document.getElementById('rekapTableBody');
       if (data.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="p-32 text-center text-slate-400 font-medium">Belum ada arsip data yang tersimpan</td></tr>';
+        body.innerHTML = '<tr><td colspan="5" class="py-20 text-center text-slate-400 italic">Arsip masih kosong.</td></tr>';
         return;
       }
+      
       const sorted = [...data].sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
       body.innerHTML = sorted.map(i => `
-        <tr class="hover:bg-slate-50/80 transition-all group">
-          <td class="px-10 py-6">
-            <div class="text-[11px] font-black text-indigo-600 font-mono tracking-tighter">${i.resi || '-'}</div>
-            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">${i.tanggal || '-'}</div>
+        <tr class="hover:bg-slate-50/50 transition-colors group">
+          <td class="px-8 py-5">
+            <div class="text-[10px] font-black text-indigo-600 font-mono tracking-tighter">${i.resi || 'E-0000'}</div>
+            <div class="text-[10px] text-slate-400 font-bold mt-1 uppercase">${i.tanggal}</div>
           </td>
-          <td class="px-10 py-6 font-bold text-slate-700 text-sm">${i.no_surat || '-'}</td>
-          <td class="px-10 py-6 text-slate-500 text-xs leading-relaxed max-w-xs truncate">${i.tujuan || '-'}</td>
-          <td class="px-10 py-6 text-[11px] font-bold text-slate-500 uppercase">${i.pengirim || '-'}</td>
-          <td class="px-10 py-6 text-center font-black text-slate-900">${i.jumlah || '1'}</td>
+          <td class="px-8 py-5 text-sm font-bold text-slate-700">${i.no_surat}</td>
+          <td class="px-8 py-5 text-xs text-slate-500 max-w-xs truncate">${i.tujuan}</td>
+          <td class="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-tight">${i.pengirim}</td>
+          <td class="px-8 py-5 text-center font-black text-slate-900">${i.jumlah}</td>
         </tr>
       `).join('');
     }
 
     function handleSearch(q) {
-      const query = q.toLowerCase();
-      const filtered = db.filter(i => 
-        (i.tujuan?.toLowerCase().includes(query)) || 
-        (i.no_surat?.toLowerCase().includes(query)) ||
-        (i.resi?.toLowerCase().includes(query))
+      const term = q.toLowerCase();
+      const filtered = database.filter(i => 
+        i.no_surat.toLowerCase().includes(term) || 
+        i.tujuan.toLowerCase().includes(term)
       );
-      renderRekap(filtered);
+      renderTable(filtered);
     }
 
+    // Form Action
     document.getElementById('formPengiriman').onsubmit = async (e) => {
       e.preventDefault();
       const btn = document.getElementById('submitBtn');
       const original = btn.innerHTML;
+      
       btn.disabled = true;
-      btn.innerHTML = `<div class="loader-ring !border-white !w-4 !h-4"></div> <span class="text-xs uppercase tracking-widest">Memproses...</span>`;
-      const entry = {
+      btn.innerHTML = `<span class="animate-spin w-4 h-4 border-2 border-white/20 border-t-white rounded-full"></span> <span>MEMPROSES...</span>`;
+      
+      const payload = {
         id: Date.now(),
-        resi: "KPKNL-" + Math.random().toString(36).substr(2, 5).toUpperCase(),
+        resi: "KPKNL-" + Math.random().toString(36).substring(2, 7).toUpperCase(),
         no_surat: document.getElementById('nomorSurat').value,
         tanggal: document.getElementById('tanggalKirim').value,
         tujuan: document.getElementById('alamatTujuan').value,
         jumlah: document.getElementById('jumlahSurat').value,
         pengirim: document.getElementById('namaPengirim').value
       };
+
       try {
-        await fetch(SPREADSHEET_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
-        db.unshift(entry); renderRekap(db); updateSummary();
-        toast("Data berhasil disimpan ke cloud!");
+        await fetch(SPREADSHEET_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+        database.unshift(payload);
+        renderTable(database);
+        updateDash();
+        notify("Data tersimpan di cloud!");
         e.target.reset();
         document.getElementById('tanggalKirim').valueAsDate = new Date();
       } catch (err) {
-        toast("Terjadi gangguan koneksi cloud.", "error");
+        notify("Gagal menghubungi server.", "error");
       } finally {
-        btn.disabled = false; btn.innerHTML = original;
+        btn.disabled = false;
+        btn.innerHTML = original;
       }
     };
 
-    function previewReportAsLetter() {
+    // Report Generation
+    function generatePreview() {
       const start = document.getElementById('reportStartDate').value;
       const end = document.getElementById('reportEndDate').value;
-      if(!start || !end) return toast("Pilih rentang tanggal terlebih dahulu", "error");
-      const filtered = db.filter(i => i.tanggal >= start && i.tanggal <= end).sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal));
+      
+      if (!start || !end) return notify("Lengkapi rentang tanggal!", "error");
+      
+      const filtered = database.filter(i => i.tanggal >= start && i.tanggal <= end)
+                               .sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal));
+                               
       if (filtered.length === 0) {
-        document.getElementById('previewSuratWrapper').classList.add('hidden');
-        return toast("Tidak ada data pada periode tersebut", "error");
+        document.getElementById('reportPreviewArea').classList.add('hidden');
+        document.getElementById('reportActions').classList.add('hidden');
+        return notify("Data tidak ditemukan.", "error");
       }
-      document.getElementById('letterPeriodRange').innerText = `${start} s/d ${end}`;
-      document.getElementById('letterPrintDate').innerText = `${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}`;
-      document.getElementById('letterTableContent').innerHTML = filtered.map((i, idx) => `
+
+      document.getElementById('reportPeriodText').innerText = `${start} s.d ${end}`;
+      document.getElementById('reportTodayDate').innerText = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+      
+      document.getElementById('reportTableContent').innerHTML = filtered.map((i, idx) => `
         <tr>
           <td style="text-align:center">${idx + 1}</td>
           <td style="text-align:center">${i.tanggal}</td>
           <td style="font-weight:bold">${i.no_surat}</td>
-          <td style="text-transform:uppercase; font-size:11px">${i.tujuan}</td>
-          <td style="text-align:center; font-weight:bold">${i.jumlah || '1'}</td>
-        </tr>`).join('');
-      document.getElementById('previewSuratWrapper').classList.remove('hidden');
-      document.getElementById('previewSuratWrapper').scrollIntoView({ behavior: 'smooth' });
+          <td style="text-transform:uppercase; font-size:10pt">${i.tujuan}</td>
+          <td style="text-align:center; font-weight:bold">${i.jumlah}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('reportPreviewArea').classList.remove('hidden');
+      document.getElementById('reportActions').classList.remove('hidden');
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
 
-    async function downloadPDF() {
+    async function exportToPDF() {
       const element = document.getElementById('printableArea');
-      if (document.getElementById('previewSuratWrapper').classList.contains('hidden')) return toast("Tampilkan pratinjau terlebih dahulu", "error");
-      toast("Membuat PDF berkualitas tinggi...");
+      notify("Mempersiapkan dokumen PDF...");
       try {
         const { jsPDF } = window.jspdf;
-        const canvas = await html2canvas(element, { scale: 2 });
+        const canvas = await html2canvas(element, { scale: 3, useCORS: true });
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`LAPORAN_EKSPEDISI_${Date.now()}.pdf`);
-        toast("PDF siap diunduh!");
-      } catch (err) { toast("Gagal konversi PDF", "error"); }
+        const pdfW = pdf.internal.pageSize.getWidth();
+        const pdfH = (canvas.height * pdfW) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+        pdf.save(`EKSPEDISI_${Date.now()}.pdf`);
+        notify("Download dimulai.");
+      } catch (e) { notify("Gagal membuat PDF.", "error"); }
     }
 
-    ['Input', 'Rekap', 'Laporan'].forEach(t => {
-      document.getElementById(`tab${t}`).onclick = () => switchTab(t);
+    // Init
+    ['Input', 'Rekap', 'Laporan'].forEach(tab => {
+      document.getElementById(`tab${tab}`).onclick = () => setActiveTab(tab);
     });
 
     window.onload = () => {
       document.getElementById('tanggalKirim').valueAsDate = new Date();
-      fetchAllData();
+      refreshData();
     };
   </script>
 </body>
