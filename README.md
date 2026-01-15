@@ -1,13 +1,19 @@
+<!doctype html>
 <html lang="id" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistem Pengiriman Surat - KPKNL Serang</title>
+  
+  <!-- Pastikan koneksi CDN menggunakan HTTPS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  
   <!-- Pustaka untuk PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
   <style>
+    /* Menggunakan font sistem sebagai cadangan jika Google Fonts gagal dimuat di GitHub */
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
     
     :root {
@@ -17,7 +23,7 @@
     }
 
     * { 
-      font-family: 'Plus Jakarta Sans', sans-serif; 
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
       box-sizing: border-box; 
     }
     
@@ -27,12 +33,14 @@
         radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.05) 0px, transparent 50%),
         radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
       color: #1e293b;
+      margin: 0;
     }
 
     /* Modern Card Style */
     .modern-card {
       background: rgba(255, 255, 255, 0.8);
       backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px); /* Dukungan Safari */
       border: 1px solid rgba(226, 232, 240, 0.6);
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(0, 0, 0, 0.03);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
